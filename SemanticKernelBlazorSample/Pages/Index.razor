@@ -1,0 +1,55 @@
+﻿@page "/"
+@using SemanticKernelBlazorSample.Data;
+@using SemanticKernelBlazorSample.Logic
+@inject SementicKernelLogic logic
+
+<textarea rows="4" cols="80" @bind=Search /><br />
+<button type="submit" @onclick="OnSearch">検索</button><br />
+@if (Messages != null)
+{
+    <table class="table table-striped">
+    @foreach(var message in Messages.OrderByDescending(x => x.Time))
+    {
+        
+            <tbody>
+                <tr>
+                    <td>@message.Name</td>
+                    @if (message.Name == "Reply")
+                    {
+                        <td>@((MarkupString)message.Message)</td>
+                    }
+                    else 
+                    {
+                    <td>@message.Message</td>
+                    }
+                </tr>
+            </tbody>
+        
+    }
+    </table>
+}
+
+
+@code {
+    private string? Search;
+    private string? Response;
+    private List<ChatMessage> Messages = new();
+
+    private async void OnSearch()
+    {
+        if (!string.IsNullOrWhiteSpace(Search))
+        {
+            Response = await logic.Run(Search);
+            ChatMessage UserMessage = new();
+            UserMessage.Name = "User";
+            UserMessage.Message = Search;
+            Messages.Add(UserMessage);
+
+            ChatMessage reply = new();
+            reply.Name = "Reply";
+            reply.Message = Response;
+            Messages.Add(reply);
+        }
+        Search = string.Empty;
+    }
+}
