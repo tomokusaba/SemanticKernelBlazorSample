@@ -1,31 +1,41 @@
 ﻿@page "/"
 @using SemanticKernelBlazorSample.Data;
 @using SemanticKernelBlazorSample.Logic
-@inject SementicKernelLogic logic
+@inject SemanticKernelLogic logic
+@implements IDisposable
 
-<textarea rows="4" cols="80" @bind=Search /><br />
-<button type="submit" @onclick="OnSearch">検索</button><br />
+<textarea rows="4" cols="80" @bind=Search />
+<br />
+<button type="submit" @onclick="OnSearch">検索</button>
+<br />
+<button type="button" @onclick="OnClear">クリア</button>
+<button type="button" @onclick="OnShazai">謝罪文</button>
+<button type="button" @onclick="OnHaruki">村上春樹</button>
+<button type="button" @onclick="OnNyan">にゃーん</button>
+
 @if (Messages != null)
 {
     <table class="table table-striped">
-    @foreach(var message in Messages.OrderByDescending(x => x.Time))
-    {
-        
-            <tbody>
+        <tbody>
+            @foreach (var message in Messages.OrderByDescending(x => x.Time))
+            {
                 <tr>
                     <td>@message.Name</td>
                     @if (message.Name == "Reply")
                     {
-                        <td>@((MarkupString)message.Message)</td>
+                        <td>
+                            @(
+                                (MarkupString)message.Message
+                                )
+                        </td>
                     }
-                    else 
+                    else
                     {
-                    <td>@message.Message</td>
+                        <td>@message.Message</td>
                     }
                 </tr>
-            </tbody>
-        
-    }
+            }
+        </tbody>
     </table>
 }
 
@@ -35,21 +45,68 @@
     private string? Response;
     private List<ChatMessage> Messages = new();
 
+    private void OnClear()
+    {
+        logic.Clear();
+        Messages.Clear();
+    }
+
+    private void OnShazai()
+    {
+        logic.Shazai();
+        Messages.Clear();
+    }
+    private void OnHaruki()
+    {
+        logic.Haruki();
+        Messages.Clear();
+    }
+
+    private void OnNyan()
+    {
+        logic.Nyan();
+        Messages.Clear();
+    }
     private async void OnSearch()
     {
         if (!string.IsNullOrWhiteSpace(Search))
         {
-            Response = await logic.Run(Search);
+            logic.GeneratedHtml = string.Empty;
             ChatMessage UserMessage = new();
             UserMessage.Name = "User";
             UserMessage.Message = Search;
             Messages.Add(UserMessage);
-
+            Search = string.Empty;
+            //StateHasChanged();
+            //Response = await logic.Run(UserMessage.Message);
             ChatMessage reply = new();
             reply.Name = "Reply";
-            reply.Message = Response;
+            reply.Message = logic.GeneratedHtml;
+
             Messages.Add(reply);
+            StateHasChanged();
+            await logic.StreamRun(UserMessage.Message);
+
+            StateHasChanged();
         }
-        Search = string.Empty;
+    }
+
+    public void Dispose()
+    {
+        logic.OnChange -= StateHasChanged;
+    }
+    protected override void OnInitialized()
+    {
+        logic.OnChange += () => OnCallback();
+        //logic.OnChange += StateHasChanged;
+    }
+
+    public void OnCallback()
+    {
+        _ = InvokeAsync(() =>
+        {
+            Messages.FindLast(x => x.Name == "Reply")!.Message = logic.GeneratedHtml;
+            StateHasChanged();
+        });
     }
 }
